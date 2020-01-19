@@ -1,0 +1,11 @@
+Support abstract sequences with the following:
+- destructuring-bind
+- merge
+- iter
+- concatenate
+
+Support abstract-hash-tables with the following:
+- with-hash-table-iterator
+- loop?
+- iter
+- doeach
