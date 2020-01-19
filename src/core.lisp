@@ -388,7 +388,7 @@ For hash-table,
       `(block nil
          (etypecase ,object
            (sequence
-            (cl:map nil
+            (map-to nil
                     ,(if (listp binding)
                          (with-gensyms (elem)
                            `(lambda (,elem)

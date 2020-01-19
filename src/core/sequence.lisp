@@ -1806,6 +1806,9 @@ of which has elements that satisfy PRED, the second which do not."
          (let ((res (apply function x)))
            (setf (gethash (car res) hash) (cdr res))))
        hash))
+    ((null type)
+     (do-sequences (x sequences nil)
+       (apply function x)))
     ((or (eq type 'list)
          (subtypep type 'abstract-list))
      (let ((results '())
@@ -1830,7 +1833,7 @@ of which has elements that satisfy PRED, the second which do not."
            (setf (elt result pointer) (apply function x))
            (incf pointer))
          result)))
-    (T (error "Invalid type specifier: ~S" type))))
+    (t (error "Invalid type specifier: ~S" type))))
 
 (defun map (function &rest sequences)
   (let ((type (etypecase (car sequences)
