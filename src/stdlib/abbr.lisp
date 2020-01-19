@@ -5,6 +5,9 @@
   (:import-from :rutils
                 :abbr)
   (:export :dbind
+           :call
+
+           ;; Multiple values
            :mvbind
            :mvcall
            :mvlist
@@ -58,3 +61,5 @@ dbind for destructuring-bind, mvbind for multiple-value-bind"))
 (defmacro val5 (form)
   "Shorthand for (nth-value 2 form)"
   `(nth-value 2 ,form))
+
+(abbr call funcall)
