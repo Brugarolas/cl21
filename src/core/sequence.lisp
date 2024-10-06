@@ -370,26 +370,26 @@ SEQUENCE."))
                                      (eighth . 7)
                                      (ninth . 8)
                                      (tenth . 9))
-             for cl-fun = (intern (string function) :cl)
-             for abstract-fun = (intern (format nil "~A-~A" :abstract function))
-             append `((defun ,function (seq)
-                        ,(documentation cl-fun 'function)
-                        (etypecase seq
-                          (cl:list (,cl-fun seq))
-                          (cl:sequence (cl:elt seq ,n))
-                          (abstract-sequence (,abstract-fun seq))))
-                      (defun (setf ,function) (newval seq)
-                        ,(documentation `(setf ,cl-fun) 'function)
-                        (etypecase seq
-                          (cl:list (setf (,cl-fun seq) newval))
-                          (cl:sequence (setf (cl:elt seq ,n) newval))
-                          (abstract-sequence (setf (,abstract-fun seq) newval))))
-                      (defgeneric ,abstract-fun (seq)
-                        (:method ((seq abstract-sequence))
-                          (abstract-elt seq ,n)))
-                      (defgeneric (setf ,abstract-fun) (newval seq)
-                        (:method (newval (seq abstract-sequence))
-                          (setf (abstract-elt seq ,n) newval))))))
+          for cl-fun = (intern (string function) :cl)
+          for abstract-fun = (intern (format nil "~A-~A" :abstract function))
+          append `((defun ,function (seq)
+                     ,(documentation cl-fun 'function)
+                     (etypecase seq
+                       (cl:list (,cl-fun seq))
+                       (cl:sequence (cl:elt seq ,n))
+                       (abstract-sequence (,abstract-fun seq))))
+                   (defun (setf ,function) (newval seq)
+                     ,(documentation `(setf ,cl-fun) 'function)
+                     (etypecase seq
+                       (cl:list (setf (,cl-fun seq) newval))
+                       (cl:sequence (setf (cl:elt seq ,n) newval))
+                       (abstract-sequence (setf (,abstract-fun seq) newval))))
+                   (defgeneric ,abstract-fun (seq)
+                     (:method ((seq abstract-sequence))
+                       (abstract-elt seq ,n)))
+                   (defgeneric (setf ,abstract-fun) (newval seq)
+                     (:method (newval (seq abstract-sequence))
+                       (setf (abstract-elt seq ,n) newval))))))
 
 (defun rest (seq)
   #.(documentation 'cl:rest 'function)
@@ -1285,27 +1285,27 @@ of which has elements that satisfy PRED, the second which do not."
      (setq sequence (cl:subseq sequence start end))
      (if count
          (loop repeat count
-               while sequence
-               collect
-               (loop repeat chunk-size
-                     while sequence
-                     collect (cl:pop sequence)))
+            while sequence
+            collect
+              (loop repeat chunk-size
+                 while sequence
+                 collect (cl:pop sequence)))
          (loop while sequence
-               collect
-               (loop repeat chunk-size
-                     while sequence
-                     collect (cl:pop sequence)))))
+            collect
+              (loop repeat chunk-size
+                 while sequence
+                 collect (cl:pop sequence)))))
 
     (cl:sequence
      (setq sequence (cl:subseq sequence start end))
      (if count
          (loop with len = (cl:length sequence)
-               with end = (min len (* count chunk-size))
-               for i below end by chunk-size
-               collect (cl:subseq sequence i (min end (+ chunk-size i))))
+            with end = (min len (* count chunk-size))
+            for i below end by chunk-size
+            collect (cl:subseq sequence i (min end (+ chunk-size i))))
          (loop with len = (cl:length sequence)
-               for i below len by chunk-size
-               collect (cl:subseq sequence i (min len (+ chunk-size i))))))
+            for i below len by chunk-size
+            collect (cl:subseq sequence i (min len (+ chunk-size i))))))
     (abstract-sequence (apply #'abstract-subdivide sequence chunk-size args) )))
 
 ;; TODO: Rewrite without using `coerce'.
@@ -1581,18 +1581,25 @@ of which has elements that satisfy PRED, the second which do not."
 ;; Function: split, split-if
 ;; Generic Function: abstract-split, abstract-split-if
 
-(defun split (delimiter sequence &rest args &key start end from-end count remove-empty-subseqs test key)
+(defun split (delimiter sequence &rest args &key start end from-end count (remove-empty-subseqs t remove-empty-subseqs-supplied-p) test key)
   #.(or (documentation 'split-sequence:split-sequence 'function) "")
-  (declare (ignore start end from-end count remove-empty-subseqs test key))
+  (declare (ignorable start end from-end count remove-empty-subseqs test key))
+  (when (not remove-empty-subseqs-supplied-p)
+    (setq args (list* :remove-empty-subseqs remove-empty-subseqs args)))
   (etypecase sequence
     (cl:sequence (apply #'split-sequence:split-sequence delimiter sequence args))
     (abstract-sequence (apply #'abstract-split delimiter sequence args))))
 (define-typecase-compiler-macro split (&whole form delimiter sequence &rest args)
   (typecase sequence
-    (cl:sequence `(split-sequence:split-sequence ,@(cdr form)))))
+    (cl:sequence (multiple-value-bind (remove-empty-subseqs supplied-p)
+                     (getf args :remove-empty-subseqs)
+                   (declare (ignore remove-empty-subseqs))
+                   (when (not supplied-p)
+                     (setq form (append form '(:remove-empty-subseqs t)))))
+                 `(split-sequence:split-sequence ,@(cdr form)))))
 
 (defgeneric abstract-split (delimiter sequence &key start end from-end count remove-empty-subseqs test key)
-  (:method (delimiter (sequence abstract-sequence) &rest args &key start end from-end count remove-empty-subseqs (test #'eql test-specified-p) (key #'identity))
+  (:method (delimiter (sequence abstract-sequence) &rest args &key start end from-end count (remove-empty-subseqs t) (test #'eql test-specified-p) (key #'identity))
     (declare (ignore start end from-end count remove-empty-subseqs))
     (when test-specified-p
       (setq args (delete-from-plist args :test)))
@@ -1602,18 +1609,25 @@ of which has elements that satisfy PRED, the second which do not."
            sequence
            args)))
 
-(defun split-if (pred sequence &rest args &key start end from-end count remove-empty-subseqs key)
+(defun split-if (pred sequence &rest args &key start end from-end count (remove-empty-subseqs t remove-empty-subseqs-supplied-p) key)
   #.(or (documentation 'split-sequence:split-sequence-if 'function) "")
-  (declare (ignore start end from-end count remove-empty-subseqs key))
+  (declare (ignorable start end from-end count remove-empty-subseqs key))
+  (when (not remove-empty-subseqs-supplied-p)
+    (setq args (list* :remove-empty-subseqs remove-empty-subseqs args)))
   (etypecase sequence
     (cl:sequence (apply #'split-sequence:split-sequence-if pred sequence args))
     (abstract-sequence (apply #'abstract-split-if pred sequence args))))
 (define-typecase-compiler-macro split-if (&whole form pred sequence &rest args)
   (typecase sequence
-    (cl:sequence `(split-sequence:split-sequence-if ,@(cdr form)))))
+    (cl:sequence (multiple-value-bind (remove-empty-subseqs supplied-p)
+                     (getf args :remove-empty-subseqs)
+                   (declare (ignore remove-empty-subseqs))
+                   (when (not supplied-p)
+                     (setq form (append form '(:remove-empty-subseqs t)))))
+                 `(split-sequence:split-sequence-if ,@(cdr form)))))
 
 (defgeneric abstract-split-if (pred sequence &key start end from-end count remove-empty-subseqs key)
-  (:method (pred (sequence abstract-sequence) &key (start 0) end from-end count remove-empty-subseqs (key #'identity))
+  (:method (pred (sequence abstract-sequence) &key (start 0) end from-end count (remove-empty-subseqs t) (key #'identity))
     (let ((subseqs '())
           (buf '())
           (split-counts 0))
@@ -1648,30 +1662,30 @@ of which has elements that satisfy PRED, the second which do not."
 (defun join (joint list-of-sequences)
   (etypecase (car list-of-sequences)
     (cl:list (loop for (x . xs) on list-of-sequences
-                   append x
-                   when xs
-                     collect joint))
+                append x
+                when xs
+                collect joint))
     (cl:string (with-output-to-string (s)
                  (loop for (x . xs) on list-of-sequences
-                       do (princ x s)
-                       when xs
-                         do (write-char joint s))))
+                    do (princ x s)
+                    when xs
+                    do (write-char joint s))))
     ((or cl:vector
          abstract-sequence)
      (let* ((length (loop for (x . xs) on list-of-sequences
-                          summing (length x)
-                          when xs
-                            summing 1))
+                       summing (length x)
+                       when xs
+                       summing 1))
             (result (make-sequence-like (car list-of-sequences)
                                         length)))
        (loop with i = 0
-             for (seq . xs) on list-of-sequences
-             do (do-abstract-sequence (x seq) ()
-                  (setf (elt result i) x)
-                  (incf i))
-             when xs
-               do (setf (elt result i) joint)
-                  (incf i))
+          for (seq . xs) on list-of-sequences
+          do (do-abstract-sequence (x seq) ()
+               (setf (elt result i) x)
+               (incf i))
+          when xs
+          do (setf (elt result i) joint)
+            (incf i))
        result))))
 
 
@@ -1792,6 +1806,9 @@ of which has elements that satisfy PRED, the second which do not."
          (let ((res (apply function x)))
            (setf (gethash (car res) hash) (cdr res))))
        hash))
+    ((null type)
+     (do-sequences (x sequences nil)
+       (apply function x)))
     ((or (eq type 'list)
          (subtypep type 'abstract-list))
      (let ((results '())
@@ -1816,7 +1833,7 @@ of which has elements that satisfy PRED, the second which do not."
            (setf (elt result pointer) (apply function x))
            (incf pointer))
          result)))
-    (T (error "Invalid type specifier: ~S" type))))
+    (t (error "Invalid type specifier: ~S" type))))
 
 (defun map (function &rest sequences)
   (let ((type (etypecase (car sequences)
